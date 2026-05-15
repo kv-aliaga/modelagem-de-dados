@@ -14,7 +14,7 @@ CREATE TABLE tb_loja(
     nome VARCHAR(60) NOT NULL,
     cnpj CHAR(14) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    telefone VARCHAR(13) UNIQUE,
+    telefone VARCHAR(20) UNIQUE,
     percentual_comissao NUMERIC(4,2) NOT NULL CHECK ( percentual_comissao > 0 ),
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao TIMESTAMP DEFAULT NOW(),
