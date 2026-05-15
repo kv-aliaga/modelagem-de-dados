@@ -21,6 +21,20 @@ CREATE TABLE tb_loja(
     data_atualizacao TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE tb_funcionario (
+    id BIGSERIAL PRIMARY KEY,
+    nome VARCHAR(60) NOT NULL,
+    cpf CHAR(11) UNIQUE NOT NULL ,
+    cargo VARCHAR(50) NOT NULL ,
+    salario NUMERIC(15,2) NOT NULL CHECK ( salario > 0 ),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    telefone VARCHAR(20) UNIQUE,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao TIMESTAMP DEFAULT NOW(),
+    data_atualizacao TIMESTAMP DEFAULT NOW(),
+    cod_loja BIGINT NOT NULL REFERENCES tb_loja (id)
+);
+
 CREATE TABLE tb_banco (
     id BIGSERIAL PRIMARY KEY,
     nome VARCHAR(60) NOT NULL,
@@ -44,11 +58,12 @@ CREATE TABLE tb_conta (
 
 CREATE TABLE tb_pagamento(
     id BIGSERIAL PRIMARY KEY,
-    tipo_pagamento VARCHAR(30) NOT NULL CHECK ( tipo_pagamento IN ('Boleto', 'PIX', 'Débito', 'Crédito')),
-    status_pagamento VARCHAR(30) NOT NULL CHECK ( status_pagamento IN ('Aguardando', 'Concluído', 'Expirado') ),
+    tipo_pagamento VARCHAR(30) NOT NULL CHECK ( tipo_pagamento IN ('BOLETO', 'PIX', 'DEBITO', 'CREDITO')),
+    status_pagamento VARCHAR(30) NOT NULL CHECK ( status_pagamento IN ('AGUARDANDO', 'CONCLUIDO', 'EXPIRADO') ),
     valor NUMERIC(15,2) NOT NULL CHECK ( valor > 0 ),
     data_pagamento TIMESTAMP DEFAULT NOW(),
-    cod_conta BIGINT NOT NULL REFERENCES tb_conta (id)
+    cod_conta_origem BIGINT NOT NULL REFERENCES tb_conta (id),
+    cod_conta_destino BIGINT NOT NULL REFERENCES tb_conta (id)
 );
 
 CREATE TABLE tb_venda (
@@ -56,7 +71,7 @@ CREATE TABLE tb_venda (
     valor_total NUMERIC(15,2) NOT NULL CHECK ( valor_total > 0 ),
     status_venda VARCHAR(30) NOT NULL CHECK ( status_venda IN ('APROVADO', 'CANCELADO', 'ESTORNADO') ),
     data_venda TIMESTAMP DEFAULT NOW(),
-    cod_loja BIGINT NOT NULL REFERENCES tb_loja (id)
+    cod_vendedor BIGINT NOT NULL REFERENCES tb_funcionario (id)
 );
 
 CREATE TABLE tb_transportadora (
@@ -71,37 +86,23 @@ CREATE TABLE tb_transportadora (
     data_atualizacao TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE tb_funcionario (
-    id BIGSERIAL PRIMARY KEY,
-    nome VARCHAR(60) NOT NULL,
-    cpf CHAR(11) UNIQUE NOT NULL ,
-    cargo VARCHAR(50) NOT NULL ,
-    salario NUMERIC(15,2) NOT NULL CHECK ( salario > 0 ),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    telefone VARCHAR(20) UNIQUE,
-    ativo BOOLEAN DEFAULT TRUE,
-    data_criacao TIMESTAMP DEFAULT NOW(),
-    data_atualizacao TIMESTAMP DEFAULT NOW(),
-    cod_loja BIGINT NOT NULL REFERENCES tb_loja (id)
-);
-
 -- TABELAS UTILITÁRIAS (DE LIGAÇÃO)
-CREATE TABLE envia_itens (
+CREATE TABLE tb_envia_itens (
     cod_loja BIGINT NOT NULL REFERENCES tb_loja (id),
     cod_transportadora BIGINT NOT NULL REFERENCES tb_transportadora (id)
 );
 
-CREATE TABLE conta_loja (
+CREATE TABLE tb_conta_loja (
     cod_loja BIGINT NOT NULL REFERENCES tb_loja (id),
     cod_conta BIGINT NOT NULL REFERENCES tb_conta (id)
 );
 
-CREATE TABLE conta_funcionario (
+CREATE TABLE tb_conta_funcionario (
     cod_funcionario BIGINT NOT NULL REFERENCES tb_funcionario (id),
     cod_conta BIGINT NOT NULL REFERENCES tb_conta (id)
 );
 
-CREATE TABLE pagamento_parcelado (
+CREATE TABLE tb_pagamento_parcelado (
     cod_pagamento BIGINT NOT NULL REFERENCES tb_pagamento (id),
     cod_venda BIGINT NOT NULL REFERENCES tb_venda (id)
 );
