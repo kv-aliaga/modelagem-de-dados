@@ -1,5 +1,3 @@
-
-
 -- TODAS AS TABELAS DE LOG PRECISAM ESTAR NO SCHEMA log (indicados de forma log.tb_log_nome)
 -- TODAS AS TABELAS DE LOG PRECISAM TER UMA FK DE log.tb_log_geral
 
