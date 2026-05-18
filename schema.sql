@@ -1,4 +1,4 @@
--- SET INFORMAÇÕES DE DATA E HORA
+-- SET INFORMAÇÕES DE FORMATAÇÃO
 ALTER DATABASE db_banco_trabalho SET TIMEZONE TO 'America/Sao_Paulo';
 ALTER DATABASE db_banco_trabalho SET datestyle = 'ISO, DMY';
 
@@ -71,7 +71,8 @@ CREATE TABLE tb_venda (
     valor_total NUMERIC(15,2) NOT NULL CHECK ( valor_total > 0 ),
     status_venda VARCHAR(30) NOT NULL CHECK ( status_venda IN ('APROVADO', 'CANCELADO', 'ESTORNADO') ),
     data_venda TIMESTAMP DEFAULT NOW(),
-    cod_vendedor BIGINT NOT NULL REFERENCES tb_funcionario (id)
+    cod_vendedor BIGINT NOT NULL REFERENCES tb_funcionario (id),
+    cod_loja BIGINT NOT NULL REFERENCES tb_loja (id)
 );
 
 CREATE TABLE tb_transportadora (
