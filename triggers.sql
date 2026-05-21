@@ -91,3 +91,94 @@ CREATE TRIGGER trg_validar_saldo_negativo
 BEFORE INSERT OR UPDATE ON tb_conta
 FOR EACH ROW
 EXECUTE FUNCTION fn_trg_validar_saldo_negativo();
+
+-- TRIGGER: VALIDAÇÃO DE TRANSFERÊNCIA ENTRE MESMAS CONTAS
+
+CREATE OR REPLACE FUNCTION fn_trg_validar_transferencia_mesma_conta()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql AS
+$$
+BEGIN
+    -- Impede transferências para a mesma conta
+    IF NEW.cod_conta_origem = NEW.cod_conta_destino THEN
+        RAISE EXCEPTION 
+            'Operação rejeitada: Conta de origem e destino não podem ser iguais. [conta_id=%]',
+            NEW.cod_conta_origem;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_validar_transferencia_mesma_conta
+BEFORE INSERT OR UPDATE ON tb_pagamento
+FOR EACH ROW
+EXECUTE FUNCTION fn_trg_validar_transferencia_mesma_conta();
+
+
+
+-- TRIGGER: ATUALIZAÇÃO AUTOMÁTICA DE SALDO APÓS PAGAMENTO CONCLUÍDO
+
+CREATE OR REPLACE FUNCTION fn_trg_processar_pagamento()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql AS
+$$
+DECLARE
+    v_saldo_origem NUMERIC;
+    v_err_desc TEXT;
+BEGIN
+    -- Executa apenas quando pagamento é concluído
+    IF NEW.status_pagamento = 'CONCLUIDO'
+       AND (TG_OP = 'INSERT'
+       OR OLD.status_pagamento IS DISTINCT FROM 'CONCLUIDO') THEN
+
+        BEGIN
+            -- Busca saldo atual da conta de origem
+            SELECT saldo
+            INTO v_saldo_origem
+            FROM tb_conta
+            WHERE id = NEW.cod_conta_origem;
+
+            -- Verifica saldo suficiente
+            IF v_saldo_origem < NEW.valor THEN
+                RAISE EXCEPTION
+                    'Saldo insuficiente para pagamento. [conta_id=%, saldo=R$ %, valor_pagamento=R$ %]',
+                    NEW.cod_conta_origem,
+                    v_saldo_origem,
+                    NEW.valor;
+            END IF;
+
+            -- Debita conta origem
+            UPDATE tb_conta
+            SET saldo = saldo - NEW.valor,
+                data_atualizacao = NOW()
+            WHERE id = NEW.cod_conta_origem;
+
+            -- Credita conta destino
+            UPDATE tb_conta
+            SET saldo = saldo + NEW.valor,
+                data_atualizacao = NOW()
+            WHERE id = NEW.cod_conta_destino;
+
+            -- Registra log
+            PERFORM fn_registrar_log('tb_pagamento', 'PROCESSAMENTO');
+
+            RAISE NOTICE
+                'Pagamento processado com sucesso. [id_pagamento=%, valor=R$ %]',
+                NEW.id,
+                NEW.valor;
+
+        EXCEPTION WHEN OTHERS THEN
+            GET STACKED DIAGNOSTICS v_err_desc = MESSAGE_TEXT;
+            RAISE EXCEPTION 'Erro ao processar pagamento: %', v_err_desc;
+        END;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_processar_pagamento
+AFTER INSERT OR UPDATE ON tb_pagamento
+FOR EACH ROW
+EXECUTE FUNCTION fn_trg_processar_pagamento();
