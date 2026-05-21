@@ -182,3 +182,42 @@ CREATE TRIGGER trg_processar_pagamento
 AFTER INSERT OR UPDATE ON tb_pagamento
 FOR EACH ROW
 EXECUTE FUNCTION fn_trg_processar_pagamento();
+
+-- TRIGGER: IMPEDIR VENDA DE VENDEDOR INATIVO
+CREATE OR REPLACE FUNCTION fn_trg_impedir_venda_vendedor_inativo()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE v_Ativo BOOLEAN;
+BEGIN 
+    SELECT ativo INTO v_Ativo FROM tb_funcionario WHERE id = NEW.cod_vendendor;
+
+    IF NOT v_ativo THEN 
+        RAISE EXCEPTION 'Operação rejeitada: Vendedor inativo.' , NEW.cod_vendendor;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_impedir_venda_vendedor_inativo
+    BEFORE INSERT ON tb_venda
+    FOR EACH ROW EXECUTE FUNCTION fn_trg_impedir_venda_vendedor_inativo();
+
+-- TRIGGER: PROTEÇÃO DE STATUS DO PAGAMENTO
+CREATE OR REPLACE FUNCTION fn_trg_valida_pagamento_status();
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN 
+    IF OLD.status_pagamento = 'CONCLUIDO' AND NEW.status_pagamento = 'AGUARDANDO' THEN
+        RAISE EXCEPTION 'Falha de segurança: Um pagamento concluido não pode voltar a ser pendente.' OLD.id;
+    END IF;
+
+    IF OLD.status_pagamento = 'CANCELADO' AND NEW.status_pagamento = 'CONCLUIDO' THEN
+        RAISE EXCEPTION 'Falha de segurança: Um pagamento cancelado não pode voltar a ser concluido diretamente.' OLD.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER trg_valida_pagamento_status
+    BEFORE UPDATE ON tb_pagamento
+    FOR EACH ROW EXECUTE FUNCTION fn_trg_valida_pagamento_status();
